@@ -1,0 +1,28 @@
+<?php
+
+namespace houdaslassi\QueueMonitor\Listeners;
+
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Str;
+use houdaslassi\QueueMonitor\Models\QueueJobRun;
+
+class RecordJobFailure
+{
+    public function handle(JobFailed $event): void
+    {
+        QueueJobRun::create([
+            'uuid'             => (string) Str::uuid(),
+            'job_class'        => method_exists($event->job, 'resolveName')
+                ? $event->job->resolveName()
+                : get_class($event->job),
+            'queue'            => $event->job->getQueue(),
+            'connection'       => $event->connectionName ?? null,
+            'attempt'          => $event->job->attempts(),
+            'status'           => 'failed',
+            'exception_class'  => get_class($event->exception),
+            'exception_message'=> Str::limit($event->exception->getMessage(), 2000),
+            'stack'            => Str::limit($event->exception->getTraceAsString(), 4000),
+            'finished_at'      => now(),
+        ]);
+    }
+}
