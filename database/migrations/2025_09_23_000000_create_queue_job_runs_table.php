@@ -15,6 +15,16 @@ return new class extends Migration {
             $table->string('connection')->nullable()->index();
             $table->unsignedInteger('attempt')->default(0);
             $table->enum('status', ['processing','processed','failed'])->index();
+
+            // extra details for observability
+            $table->unsignedBigInteger('duration_ms')->nullable()->index();
+            $table->string('exception_class')->nullable()->index();
+            $table->text('exception_message')->nullable();
+            $table->text('stack')->nullable();
+            $table->text('payload_excerpt')->nullable();
+            $table->timestamp('started_at')->nullable()->index();
+            $table->timestamp('finished_at')->nullable()->index();
+
             $table->timestamps();
         });
     }
