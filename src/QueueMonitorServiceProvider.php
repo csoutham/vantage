@@ -2,6 +2,7 @@
 
 namespace houdaslassi\QueueMonitor;
 
+use houdaslassi\QueueMonitor\Console\Commands\RetryFailedJob;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Queue\Events\JobFailed;
@@ -22,6 +23,12 @@ class QueueMonitorServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/queue-monitor.php' => config_path('queue-monitor.php'),
         ], 'queue-monitor-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                RetryFailedJob::class,
+            ]);
+        }
 
         // Load our migrations automatically
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
