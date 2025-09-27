@@ -2,11 +2,14 @@
 
 namespace houdaslassi\QueueMonitor\Listeners;
 
+use houdaslassi\QueueMonitor\Traits\ExtractsRetryOf;
 use Illuminate\Queue\Events\JobProcessing;
 use houdaslassi\QueueMonitor\Models\QueueJobRun;
 
 class RecordJobStart
 {
+    use ExtractsRetryOf;
+
     public function handle(JobProcessing $event): void
     {
         QueueJobRun::create([
@@ -17,26 +20,7 @@ class RecordJobStart
             'attempt'     => $event->job->attempts(),
             'status'      => 'processing',
             'started_at'  => now(),
+            'retried_from_id'  => $this->getRetryOf($event),
         ]);
-    }
-
-    protected function jobClass(JobProcessing $event): string
-    {
-        return method_exists($event->job, 'resolveName')
-            ? $event->job->resolveName()
-            : get_class($event->job);
-    }
-
-    protected function bestUuid(JobProcessing $event): string
-    {
-        // Prefer a stable id if available (Laravel versions differ here)
-        if (method_exists($event->job, 'uuid') && $event->job->uuid()) {
-            return (string) $event->job->uuid();
-        }
-        if (method_exists($event->job, 'getJobId') && $event->job->getJobId()) {
-            return (string) $event->job->getJobId();
-        }
-        // Otherwise we’ll generate a UUID here; success listener will match by class/queue/connection
-        return (string) \Illuminate\Support\Str::uuid();
     }
 }

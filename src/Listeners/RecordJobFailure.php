@@ -3,6 +3,7 @@
 namespace houdaslassi\QueueMonitor\Listeners;
 
 use houdaslassi\QueueMonitor\Notifications\JobFailedNotification;
+use houdaslassi\QueueMonitor\Traits\ExtractsRetryOf;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Str;
@@ -10,6 +11,8 @@ use houdaslassi\QueueMonitor\Models\QueueJobRun;
 
 class RecordJobFailure
 {
+    use ExtractsRetryOf;
+
     public function handle(JobFailed $event): void
     {
         $row = QueueJobRun::create([
@@ -25,6 +28,7 @@ class RecordJobFailure
             'exception_message'=> Str::limit($event->exception->getMessage(), 2000),
             'stack'            => Str::limit($event->exception->getTraceAsString(), 4000),
             'finished_at'      => now(),
+            'retried_from_id'  => $this->getRetryOf($event),
         ]);
 
         if (config('queue-monitor.notify.email') || config('queue-monitor.notify.slack_webhook')) {
