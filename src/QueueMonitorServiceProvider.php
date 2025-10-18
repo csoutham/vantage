@@ -26,12 +26,23 @@ class QueueMonitorServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                RetryFailedJob::class,
+                Console\Commands\RetryFailedJob::class,
+                Console\Commands\ListJobs::class,
+                Console\Commands\TagStats::class,
+                Console\Commands\CleanupStuckJobs::class,
             ]);
         }
 
         // Load our migrations automatically
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+        // Load views
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'queue-monitor');
+
+        // Load routes if enabled
+        if (config('queue-monitor.routes', true)) {
+            $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        }
 
         // Listen to Laravel's built-in queue events
         Event::listen(JobProcessing::class, [Listeners\RecordJobStart::class, 'handle']);
