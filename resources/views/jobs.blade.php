@@ -3,85 +3,139 @@
 @section('title', 'All Jobs')
 
 @section('content')
-<div class="mb-6">
-    <h2 class="text-2xl font-bold text-gray-900">All Jobs</h2>
+<!-- Header -->
+<div class="mb-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">All Jobs</h1>
+            <p class="mt-1 text-sm text-gray-500">Monitor and filter your queue jobs</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="text-sm text-gray-500">{{ $jobs->total() }} total jobs</span>
+            <button onclick="location.reload()" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Filters -->
-<div class="bg-white shadow rounded-lg p-4 mb-6">
-    <form method="GET" action="{{ route('queue-monitor.jobs') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="status" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="">All</option>
-                <option value="processed" {{ request('status') === 'processed' ? 'selected' : '' }}>Processed</option>
-                <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>Failed</option>
-                <option value="processing" {{ request('status') === 'processing' ? 'selected' : '' }}>Processing</option>
-            </select>
-        </div>
+<div class="bg-white shadow-sm border border-gray-200 rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Filters</h3>
+        <p class="mt-1 text-sm text-gray-500">Narrow down your job list</p>
+    </div>
+    <div class="p-6">
+        <form method="GET" action="{{ route('queue-monitor.jobs') }}" class="space-y-6">
+            <!-- First row of filters -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                    <select name="status" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <option value="">All Statuses</option>
+                        <option value="processed" {{ request('status') === 'processed' ? 'selected' : '' }}>✅ Processed</option>
+                        <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>❌ Failed</option>
+                        <option value="processing" {{ request('status') === 'processing' ? 'selected' : '' }}>⏳ Processing</option>
+                    </select>
+                </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Job Class</label>
-            <input type="text" name="job_class" value="{{ request('job_class') }}" placeholder="Search job class..."
-                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-        </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Queue</label>
+                    <select name="queue" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                        <option value="">All Queues</option>
+                        @foreach($queues as $queue)
+                            <option value="{{ $queue }}" {{ request('queue') === $queue ? 'selected' : '' }}>{{ $queue }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Queue</label>
-            <select name="queue" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option value="">All Queues</option>
-                @foreach($queues as $queue)
-                    <option value="{{ $queue }}" {{ request('queue') === $queue ? 'selected' : '' }}>{{ $queue }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-            <div class="space-y-2">
-                <input type="text" name="tags" value="{{ request('tags') }}" placeholder="Enter tags (comma-separated)..."
-                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                <div class="flex gap-2 text-sm">
-                    <label class="flex items-center">
-                        <input type="radio" name="tag_mode" value="all" {{ request('tag_mode', 'all') === 'all' ? 'checked' : '' }} class="mr-1">
-                        <span class="text-gray-600">All tags</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="tag_mode" value="any" {{ request('tag_mode') === 'any' ? 'checked' : '' }} class="mr-1">
-                        <span class="text-gray-600">Any tag</span>
-                    </label>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Job Class</label>
+                    <input type="text" name="job_class" value="{{ request('job_class') }}" placeholder="Search by job class..."
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                 </div>
             </div>
-        </div>
 
-        <div class="flex items-end gap-2">
-            <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                Filter
-            </button>
-            <a href="{{ route('queue-monitor.jobs') }}" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-center">
-                Clear
-            </a>
-        </div>
+            <!-- Tags section -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tags</label>
+                <div class="space-y-3">
+                    <input type="text" name="tags" value="{{ request('tags') }}" placeholder="Enter tags separated by commas (e.g., email, notification, urgent)"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600">Filter mode:</span>
+                        <div class="flex items-center space-x-3">
+                            <label class="flex items-center">
+                                <input type="radio" name="tag_mode" value="all" {{ request('tag_mode', 'all') === 'all' ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                <span class="ml-2 text-sm text-gray-700">Must have all tags</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="tag_mode" value="any" {{ request('tag_mode') === 'any' ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                                <span class="ml-2 text-sm text-gray-700">Must have any tag</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div class="flex items-center space-x-4">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
+                        </svg>
+                        Apply Filters
+                    </button>
+                    <a href="{{ route('queue-monitor.jobs') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Clear All
+                    </a>
+                </div>
+                <div class="text-sm text-gray-500">
+                    Press <kbd class="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl+K</kbd> to focus tags
+                </div>
+            </div>
     </form>
 </div>
 
 <!-- Tag Cloud -->
 @if($allTags->isNotEmpty())
-<div class="bg-white shadow rounded-lg p-4 mb-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-3">🏷️ Popular Tags</h3>
-    <div class="flex flex-wrap gap-2">
-        @foreach($allTags as $tagData)
-            <button onclick="addTagToFilter('{{ $tagData['tag'] }}')" 
-                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-colors
-                           {{ $tagData['failed'] > 0 ? 'bg-red-100 text-red-800 hover:bg-red-200' : 
-                              ($tagData['processed'] > 0 ? 'bg-green-100 text-green-800 hover:bg-green-200' : 
-                              'bg-blue-100 text-blue-800 hover:bg-blue-200') }}">
-                {{ $tagData['tag'] }}
-                <span class="ml-1 text-xs opacity-75">({{ $tagData['total'] }})</span>
-            </button>
-        @endforeach
+<div class="bg-white shadow-sm border border-gray-200 rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Popular Tags</h3>
+        <p class="mt-1 text-sm text-gray-500">Click any tag to add it to your filter</p>
     </div>
-    <p class="text-xs text-gray-500 mt-2">Click a tag to add it to your filter</p>
+    <div class="p-6">
+        <div class="flex flex-wrap gap-2">
+            @foreach($allTags as $tagData)
+                <button onclick="addTagToFilter('{{ $tagData['tag'] }}')" 
+                        class="group inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                               {{ $tagData['failed'] > 0 ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' : 
+                                  ($tagData['processed'] > 0 ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' : 
+                                  'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100') }}">
+                    <span class="mr-2">
+                        @if($tagData['failed'] > 0)
+                            ❌
+                        @elseif($tagData['processed'] > 0)
+                            ✅
+                        @else
+                            🏷️
+                        @endif
+                    </span>
+                    <span>{{ $tagData['tag'] }}</span>
+                    <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold {{ $tagData['failed'] > 0 ? 'bg-red-100 text-red-800' : ($tagData['processed'] > 0 ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800') }}">
+                        {{ $tagData['total'] }}
+                    </span>
+                </button>
+            @endforeach
+        </div>
+    </div>
 </div>
 @endif
 
