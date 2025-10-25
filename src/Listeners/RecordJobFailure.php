@@ -4,7 +4,7 @@ namespace houdaslassi\QueueMonitor\Listeners;
 
 use houdaslassi\QueueMonitor\Notifications\JobFailedNotification;
 use houdaslassi\QueueMonitor\Support\Traits\ExtractsRetryOf;
-use houdaslassi\QueueMonitor\Support\PayloadExtractor;
+use houdaslassi\QueueMonitor\Support\TagExtractor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Queue\Events\JobFailed;
@@ -31,10 +31,7 @@ class RecordJobFailure
             'stack'            => Str::limit($event->exception->getTraceAsString(), 4000),
             'finished_at'      => now(),
             'retried_from_id'  => $this->getRetryOf($event),
-            'payload'          => PayloadExtractor::getPayload($event),
-            'job_tags'         => config('queue-monitor.tagging.enabled', true) 
-                                    ? PayloadExtractor::extractTags($event) 
-                                    : null,
+            'job_tags'         => TagExtractor::extract($event),
         ]);
 
         Log::info('Queue Monitor: Job failed', [
