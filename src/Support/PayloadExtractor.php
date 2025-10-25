@@ -12,7 +12,7 @@ class PayloadExtractor
     /**
      * Extract job payload as JSON string for storage
      * 
-     * Gets public properties from job and stores them safely.
+     * Gets COMPLETE payload from Laravel's queue - everything!
      */
     public static function getPayload($event): ?string
     {
@@ -21,25 +21,44 @@ class PayloadExtractor
         }
 
         try {
-            $command = self::getCommand($event);
+            // Get the COMPLETE raw payload from Laravel's queue
+            $rawPayload = $event->job->payload();
             
-            if (!$command) {
-                return null;
+            // Convert the command object to readable format
+            $command = self::getCommand($event);
+            $commandData = [];
+            
+            if ($command) {
+                $commandData = self::extractData($command);
             }
+            
+            // Combine everything
+            $fullData = [
+                'raw_payload' => $rawPayload, // Complete Laravel queue payload
+                'command_data' => $commandData, // Extracted command properties
+                'job_info' => [
+                    'uuid' => method_exists($event->job, 'uuid') ? $event->job->uuid() : null,
+                    'job_id' => method_exists($event->job, 'getJobId') ? $event->job->getJobId() : null,
+                    'name' => method_exists($event->job, 'resolveName') ? $event->job->resolveName() : null,
+                    'queue' => $event->job->getQueue(),
+                    'connection' => $event->connectionName ?? null,
+                    'attempts' => $event->job->attempts(),
+                ],
+            ];
+            
+            $fullData = self::redactSensitive($fullData);
 
-            $data = self::extractData($command);
-            $data = self::redactSensitive($data);
-
-            // Debug: Log what we're extracting (remove in production)
+            // Debug: Log what we're extracting
             if (config('app.debug', false)) {
-                \Log::info('PayloadExtractor: Extracted data', [
-                    'command_class' => get_class($command),
-                    'data_keys' => array_keys($data),
-                    'sample_data' => array_slice($data, 0, 3, true)
+                \Log::info('PayloadExtractor: Complete payload extracted', [
+                    'command_class' => $command ? get_class($command) : null,
+                    'raw_payload_keys' => array_keys($rawPayload),
+                    'command_data_keys' => array_keys($commandData),
+                    'payload_size' => strlen(json_encode($fullData)),
                 ]);
             }
 
-            return json_encode($data, JSON_UNESCAPED_UNICODE);
+            return json_encode($fullData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
             \Log::error('PayloadExtractor: Failed to extract payload', [
                 'error' => $e->getMessage(),
@@ -73,32 +92,46 @@ class PayloadExtractor
     /**
      * Extract data from command object
      * 
-     * Gets public properties and converts to JSON-safe format.
+     * Gets all properties (public, protected, private) from the job.
+     * Filters out Laravel's internal framework properties.
      */
     protected static function extractData(object $command): array
     {
         $data = [];
 
-        // Get all public properties
-        foreach (get_object_vars($command) as $key => $value) {
-            $data[$key] = self::convertValue($value);
-        }
+        // Framework properties to skip (these are not user data)
+        $skipProperties = [
+            'job', 'connection', 'queue', 'chainConnection', 'chainQueue',
+            'chainCatchCallbacks', 'delay', 'afterCommit', 'middleware',
+            'chained', 'tries', 'timeout', 'maxExceptions', 'backoff',
+            'retryUntil', 'shouldBeEncrypted', 'deleteWhenMissingModels',
+            'queueMonitorRetryOf', 'messageGroup', 'deduplicator',
+            'id', 'locale', // Notification framework properties
+        ];
 
-        // Also try to get protected/private properties using reflection
         try {
             $reflection = new \ReflectionClass($command);
-            foreach ($reflection->getProperties(\ReflectionProperty::IS_PROTECTED | \ReflectionProperty::IS_PRIVATE) as $property) {
+            
+            // Get ALL properties (public, protected, private)
+            foreach ($reflection->getProperties() as $property) {
                 $property->setAccessible(true);
                 $key = $property->getName();
-                $value = $property->getValue($command);
                 
-                // Only add if not already set (public takes precedence)
-                if (!isset($data[$key])) {
+                // Skip Laravel's internal properties
+                if (in_array($key, $skipProperties)) {
+                    continue;
+                }
+                
+                $value = $property->getValue($command);
+                $data[$key] = self::convertValue($value);
+            }
+        } catch (\Throwable $e) {
+            // If reflection fails, fallback to public properties only
+            foreach (get_object_vars($command) as $key => $value) {
+                if (!in_array($key, $skipProperties)) {
                     $data[$key] = self::convertValue($value);
                 }
             }
-        } catch (\Throwable $e) {
-            // Ignore reflection errors
         }
 
         return $data;
