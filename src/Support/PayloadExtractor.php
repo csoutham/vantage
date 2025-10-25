@@ -92,45 +92,27 @@ class PayloadExtractor
     /**
      * Extract data from command object
      * 
-     * Gets all properties (public, protected, private) from the job.
-     * Filters out Laravel's internal framework properties.
+     * Gets ALL properties (public, protected, private) from the job.
+     * Saves EVERYTHING - no filtering!
      */
     protected static function extractData(object $command): array
     {
         $data = [];
 
-        // Framework properties to skip (these are not user data)
-        $skipProperties = [
-            'job', 'connection', 'queue', 'chainConnection', 'chainQueue',
-            'chainCatchCallbacks', 'delay', 'afterCommit', 'middleware',
-            'chained', 'tries', 'timeout', 'maxExceptions', 'backoff',
-            'retryUntil', 'shouldBeEncrypted', 'deleteWhenMissingModels',
-            'queueMonitorRetryOf', 'messageGroup', 'deduplicator',
-            'id', 'locale', // Notification framework properties
-        ];
-
         try {
             $reflection = new \ReflectionClass($command);
             
-            // Get ALL properties (public, protected, private)
+            // Get ALL properties (public, protected, private) - NO FILTERING!
             foreach ($reflection->getProperties() as $property) {
                 $property->setAccessible(true);
                 $key = $property->getName();
-                
-                // Skip Laravel's internal properties
-                if (in_array($key, $skipProperties)) {
-                    continue;
-                }
-                
                 $value = $property->getValue($command);
                 $data[$key] = self::convertValue($value);
             }
         } catch (\Throwable $e) {
             // If reflection fails, fallback to public properties only
             foreach (get_object_vars($command) as $key => $value) {
-                if (!in_array($key, $skipProperties)) {
-                    $data[$key] = self::convertValue($value);
-                }
+                $data[$key] = self::convertValue($value);
             }
         }
 
