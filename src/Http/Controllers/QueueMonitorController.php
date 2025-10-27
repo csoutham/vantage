@@ -294,20 +294,78 @@ class QueueMonitorController extends Controller
     }
     
     /**
-     * Retry a job
+     * Retry a job - simple and works for all cases
      */
     public function retry($id)
     {
-        $job = QueueJobRun::findOrFail($id);
+        $run = QueueJobRun::findOrFail($id);
         
-        if ($job->status !== 'failed') {
+        if ($run->status !== 'failed') {
             return back()->with('error', 'Only failed jobs can be retried.');
         }
-        
-        // Call the retry command
-        \Artisan::call('vantage:retry', ['run_id' => $id, '--force' => true]);
-        
-        return back()->with('success', 'Job queued for retry!');
+
+        $jobClass = $run->job_class;
+
+        if (!class_exists($jobClass)) {
+            return back()->with('error', "Job class {$jobClass} not found.");
+        }
+
+        try {
+            // Simple: Just unserialize the original job from Laravel's payload
+            $job = $this->restoreJobFromPayload($run);
+            
+            if (!$job) {
+                return back()->with('error', 'Unable to restore job. Payload might be missing or corrupted.');
+            }
+
+            // Mark as retry
+            $job->queueMonitorRetryOf = $run->id;
+
+            // Dispatch
+            dispatch($job)
+                ->onQueue($run->queue ?? 'default')
+                ->onConnection($run->connection ?? config('queue.default'));
+            
+            return back()->with('success', "✓ Job queued for retry!");
+            
+        } catch (\Throwable $e) {
+            \Log::error('Vantage: Retry failed', [
+                'job_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return back()->with('error', "Retry failed: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore job from the original Laravel serialized payload
+     * This is the simplest and most accurate method
+     */
+    protected function restoreJobFromPayload(QueueJobRun $run): ?object
+    {
+        if (!$run->payload) {
+            return null;
+        }
+
+        try {
+            $payload = json_decode($run->payload, true);
+            
+            // Get the serialized command from Laravel's raw payload
+            $serialized = $payload['raw_payload']['data']['command'] ?? null;
+            
+            if (!$serialized) {
+                return null;
+            }
+
+            // Unserialize it - Laravel stored it this way originally
+            $job = @unserialize($serialized, ['allowed_classes' => true]);
+            
+            return is_object($job) ? $job : null;
+            
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
     
     /**
