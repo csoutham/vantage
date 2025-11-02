@@ -91,4 +91,19 @@ return [
     |
     */
     'routes' => env('VANTAGE_ROUTES', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Performance Telemetry
+    |--------------------------------------------------------------------------
+    |
+    | Configure automatic performance telemetry collection for queued jobs.
+    | If disabled, only basic lifecycle fields are stored. Sample rate lets
+    | you downsample metrics collection to reduce overhead.
+    */
+    'telemetry' => [
+        'enabled' => env('VANTAGE_TELEMETRY_ENABLED', true),
+        'sample_rate' => (float) env('VANTAGE_TELEMETRY_SAMPLE_RATE', 1.0), // 0.0 - 1.0
+        'capture_cpu' => env('VANTAGE_TELEMETRY_CPU', true),
+    ],
 ];
