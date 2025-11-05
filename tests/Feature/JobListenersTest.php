@@ -69,6 +69,75 @@ it('records job success and calculates duration', function () {
         ->and($record->duration_ms)->toBeGreaterThan(0);
 });
 
+it('updates same record from processing to failed', function () {
+    // Create a processing record first
+    $jobRun = QueueJobRun::create([
+        'uuid' => 'test-uuid-failed',
+        'job_class' => 'App\\Jobs\\TestJob',
+        'status' => 'processing',
+        'started_at' => now()->subSeconds(5),
+    ]);
+
+    $exception = new \Exception('Test exception message');
+    $job = new class {
+        public $queue = 'default';
+        public function getQueue() { return $this->queue; }
+        public function attempts() { return 1; }
+        public function uuid() { return 'test-uuid-failed'; }
+        public function resolveName() { return 'App\\Jobs\\TestJob'; }
+    };
+
+    $event = new JobFailed('test-connection', $job, $exception);
+    $listener = new RecordJobFailure();
+    $listener->handle($event);
+
+    // Verify it's the SAME record (same ID)
+    $updated = QueueJobRun::find($jobRun->id);
+
+    expect($updated->id)->toBe($jobRun->id)
+        ->and($updated->status)->toBe('failed')
+        ->and($updated->exception_class)->toBe('Exception')
+        ->and($updated->exception_message)->toContain('Test exception')
+        ->and($updated->finished_at)->not->toBeNull()
+        ->and($updated->duration_ms)->toBeGreaterThan(0);
+
+    // Verify no duplicate records were created
+    expect(QueueJobRun::where('uuid', 'test-uuid-failed')->count())->toBe(1);
+});
+
+it('updates same record from processing to processed', function () {
+    // Create a processing record first
+    $jobRun = QueueJobRun::create([
+        'uuid' => 'test-uuid-processed',
+        'job_class' => 'App\\Jobs\\TestJob',
+        'status' => 'processing',
+        'started_at' => now()->subSeconds(5),
+    ]);
+
+    $job = new class {
+        public $queue = 'default';
+        public function getQueue() { return $this->queue; }
+        public function attempts() { return 1; }
+        public function uuid() { return 'test-uuid-processed'; }
+        public function resolveName() { return 'App\\Jobs\\TestJob'; }
+    };
+
+    $event = new JobProcessed('test-connection', $job);
+    $listener = new RecordJobSuccess();
+    $listener->handle($event);
+
+    // Verify it's the SAME record (same ID)
+    $updated = QueueJobRun::find($jobRun->id);
+
+    expect($updated->id)->toBe($jobRun->id)
+        ->and($updated->status)->toBe('processed')
+        ->and($updated->finished_at)->not->toBeNull()
+        ->and($updated->duration_ms)->toBeGreaterThan(0);
+
+    // Verify no duplicate records were created
+    expect(QueueJobRun::where('uuid', 'test-uuid-processed')->count())->toBe(1);
+});
+
 it('records job failure with exception details', function () {
     $job = new class {
         public $queue = 'default';
