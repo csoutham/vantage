@@ -54,22 +54,64 @@ class RecordJobStart
         }
 
         $payloadJson = PayloadExtractor::getPayload($event);
+        $jobClass = $this->jobClass($event);
+        $queue = $event->job->getQueue();
+        $connection = $event->connectionName ?? null;
 
-        QueueJobRun::create([
-            'uuid'             => $uuid,
-            'job_class'        => $this->jobClass($event),
-            'queue'            => $event->job->getQueue(),
-            'connection'       => $event->connectionName ?? null,
-            'attempt'          => $event->job->attempts(),
-            'status'           => 'processing',
-            'started_at'       => now(),
-            'retried_from_id'  => $this->getRetryOf($event),
-            'payload'          => $payloadJson,
-            'job_tags'         => TagExtractor::extract($event),
-            // telemetry columns (nullable if disabled/unsampled)
-            'memory_start_bytes' => $memoryStart,
-            'memory_peak_start_bytes' => $memoryPeakStart,
-        ]);
+        // Check if record already exists (by UUID - most reliable)
+        $row = QueueJobRun::where('uuid', $uuid)->first();
+
+        // Fallback: try to find by job class, queue, connection (for jobs without UUID)
+        if (!$row) {
+            $row = QueueJobRun::where('job_class', $jobClass)
+                ->where('queue', $queue)
+                ->where('connection', $connection)
+                ->where('status', 'processing')
+                ->where('created_at', '>', now()->subMinute()) // Only very recent
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if ($row) {
+            // Update existing record
+            $row->status = 'processing';
+            $row->started_at = now();
+            $row->finished_at = null; // Reset if it was set
+            $row->attempt = $event->job->attempts();
+            $row->retried_from_id = $this->getRetryOf($event);
+            $row->payload = $payloadJson;
+            $row->job_tags = TagExtractor::extract($event);
+            $row->memory_start_bytes = $memoryStart;
+            $row->memory_peak_start_bytes = $memoryPeakStart;
+            // Reset end metrics
+            $row->memory_end_bytes = null;
+            $row->memory_peak_end_bytes = null;
+            $row->memory_peak_delta_bytes = null;
+            $row->cpu_user_ms = null;
+            $row->cpu_sys_ms = null;
+            $row->duration_ms = null;
+            $row->exception_class = null;
+            $row->exception_message = null;
+            $row->stack = null;
+            $row->save();
+        } else {
+            // Create new record
+            QueueJobRun::create([
+                'uuid'             => $uuid,
+                'job_class'        => $jobClass,
+                'queue'            => $queue,
+                'connection'       => $connection,
+                'attempt'          => $event->job->attempts(),
+                'status'           => 'processing',
+                'started_at'       => now(),
+                'retried_from_id'  => $this->getRetryOf($event),
+                'payload'          => $payloadJson,
+                'job_tags'         => TagExtractor::extract($event),
+                // telemetry columns (nullable if disabled/unsampled)
+                'memory_start_bytes' => $memoryStart,
+                'memory_peak_start_bytes' => $memoryPeakStart,
+            ]);
+        }
     }
 
     /**
