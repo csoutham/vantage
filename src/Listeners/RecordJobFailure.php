@@ -19,6 +19,11 @@ class RecordJobFailure
 
     public function handle(JobFailed $event): void
     {
+        // Master switch: if package is disabled, don't track anything
+        if (!config('vantage.enabled', true)) {
+            return;
+        }
+
         $telemetryEnabled = config('vantage.telemetry.enabled', true);
         $captureCpu = config('vantage.telemetry.capture_cpu', true);
 

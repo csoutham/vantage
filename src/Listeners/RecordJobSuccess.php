@@ -18,6 +18,11 @@ class RecordJobSuccess
 
     public function handle(JobProcessed $event): void
     {
+        // Master switch: if package is disabled, don't track anything
+        if (!config('vantage.enabled', true)) {
+            return;
+        }
+
         $uuid = $this->bestUuid($event);
         $jobClass = $this->jobClass($event);
         $queue = $event->job->getQueue();

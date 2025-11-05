@@ -75,6 +75,9 @@ php artisan vendor:publish --tag=vantage-config
 ```
 
 Main settings:
+- `enabled` - Master switch to enable/disable the entire package (default: true)
+  - Set `VANTAGE_ENABLED=false` in `.env` to disable all tracking
+  - Useful for testing in staging without affecting production
 - `store_payload` - Whether to store job payloads (for debugging/retry)
 - `redact_keys` - Keys to redact from payloads (password, token, etc.)
 - `retention_days` - How long to keep job history
@@ -83,6 +86,22 @@ Main settings:
 - `telemetry.enabled` - Enable performance telemetry (memory/CPU)
 - `telemetry.sample_rate` - Sampling rate (0.0-1.0, default: 1.0)
 - `telemetry.capture_cpu` - Enable CPU time tracking
+
+### Enable/Disable Package
+
+To disable the package entirely (useful for staging environments):
+
+```env
+VANTAGE_ENABLED=false
+```
+
+When disabled:
+- No job tracking occurs
+- Routes are not registered
+- Listeners are not active
+- No database writes
+
+Perfect for testing in staging without affecting production data!
 
 ## Testing
 

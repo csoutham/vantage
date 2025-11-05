@@ -15,6 +15,11 @@ class RecordJobStart
 
     public function handle(JobProcessing $event): void
     {
+        // Master switch: if package is disabled, don't track anything
+        if (!config('vantage.enabled', true)) {
+            return;
+        }
+
         $uuid = $this->bestUuid($event);
 
         // Telemetry config & sampling
