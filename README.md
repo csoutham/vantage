@@ -54,7 +54,15 @@ Or use the web interface - just click retry on any failed job.
 
 ### Job Tagging
 
-Jobs with tags (using Laravel's `tags()` method) are automatically tracked. Filter and view jobs by tag in the web interface.
+Jobs with tags (using Laravel's `tags()` method) are automatically tracked. Visit `/vantage/tags` to see:
+
+- **Tags Analytics**: View statistics for all tags (total jobs, processed, failed, processing, success rate, average duration)
+- **Search**: Filter tags by name in real-time
+- **Sortable Columns**: Click any column header to sort by that metric
+- **Clickable Tags**: Click a tag to view all jobs with that tag
+- **Time Filters**: View data for last 24 hours, 7 days, or 30 days
+
+Filter and view jobs by tag in the web interface.
 
 ### Queue Depth Monitoring
 
