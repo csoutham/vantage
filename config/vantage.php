@@ -118,4 +118,20 @@ return [
     |
     */
     'database_connection' => env('VANTAGE_DATABASE_CONNECTION', null),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication
+    |--------------------------------------------------------------------------
+    |
+    | Configure authentication for the Vantage dashboard.
+    | When enabled, routes will be protected by Laravel's default 'auth' middleware.
+    | Users must be authenticated to access the dashboard.
+    |
+    | Set to false to disable authentication (not recommended for production).
+    |
+    */
+    'auth' => [
+        'enabled' => env('VANTAGE_AUTH_ENABLED', true),
+    ],
 ];
