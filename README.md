@@ -95,8 +95,10 @@ VANTAGE_ENABLED=false
 When disabled:
 - No job tracking occurs
 - Routes are not registered
-- Listeners are not active
+- Event listeners are not active
+- Commands are not registered
 - No database writes
+- Gate authorization is not registered
 
 Perfect for testing in staging without affecting production data!
 
@@ -155,6 +157,9 @@ composer test
 ## Environment Variables
 
 ```env
+# Master switch - Enable/disable entire package (default: true)
+VANTAGE_ENABLED=true
+
 # Database connection for queue_job_runs table (optional)
 VANTAGE_DATABASE_CONNECTION=mysql
 
