@@ -37,7 +37,7 @@ Visit `/vantage/failed` to see all failed jobs with exception details and retry 
 
 ![Failed Jobs](screenshots/vantage_04.png)
 
-![Failed Jobs List](screenshots/vantage_05.png)
+![Failed Jobs List](screenshots/vanatge_05.png)
 
 ### Web Interface
 
@@ -54,6 +54,17 @@ Visit `/vantage` to access the comprehensive monitoring dashboard:
 - **Time Period Filters**: View data for last hour, 6 hours, 24 hours, 7 days, 30 days, or all time
 
 ![Dashboard](screenshots/vantage_01.png)
+
+**Recent Jobs Table** - Quick view of the latest 20 jobs with status, duration, and quick actions:
+
+The Recent Jobs table appears on the dashboard showing:
+- Job ID, class name, and queue
+- Tags associated with each job
+- Status indicators (Processing, Processed, Failed)
+- Duration and creation time
+- Quick "View" action to see full job details
+
+**Recent Batches** - Track Laravel job batches with success/failure rates:
 
 ![Recent Batches](screenshots/vantage_03.png)
 
