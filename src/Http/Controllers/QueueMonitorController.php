@@ -71,7 +71,7 @@ class QueueMonitorController extends Controller
         $jobsByHour = QueueJobRun::select(
                 $dateFormat,
                 DB::raw('count(*) as count'),
-                DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed_count')
+                DB::raw("sum(case when status = 'failed' then 1 else 0 end) as failed_count")
             )
             ->where('created_at', '>', $since)
             ->groupBy('hour')
