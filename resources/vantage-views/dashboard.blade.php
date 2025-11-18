@@ -110,6 +110,122 @@
     </div>
 </div>
 
+<!-- Performance Stats Cards -->
+@php
+    $hasPerformanceData = $performanceStats['avg_memory_peak_end_bytes'] !== null || $performanceStats['avg_cpu_total_ms'] !== null;
+@endphp
+@if($hasPerformanceData)
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Average Memory Usage -->
+    @if($performanceStats['avg_memory_peak_end_bytes'] !== null)
+    <div class="bg-gradient-to-br from-purple-50 to-purple-100 overflow-hidden shadow-lg rounded-xl border border-purple-200 hover:shadow-xl transition-shadow">
+        <div class="p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-purple-600 uppercase tracking-wide">Avg Memory</p>
+                    <p class="text-2xl font-bold text-purple-900 mt-2">
+                        @php
+                            $bytes = $performanceStats['avg_memory_peak_end_bytes'];
+                            if ($bytes < 1024 * 1024) {
+                                echo round($bytes / 1024, 2) . ' KB';
+                            } elseif ($bytes < 1024 * 1024 * 1024) {
+                                echo round($bytes / (1024 * 1024), 2) . ' MB';
+                            } else {
+                                echo round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+                            }
+                        @endphp
+                    </p>
+                    <p class="text-xs text-purple-600 mt-1">Peak usage</p>
+                </div>
+                <div class="text-4xl opacity-80">💾</div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Peak Memory Usage -->
+    @if($performanceStats['max_memory_peak_end_bytes'] !== null)
+    <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 overflow-hidden shadow-lg rounded-xl border border-indigo-200 hover:shadow-xl transition-shadow">
+        <div class="p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-indigo-600 uppercase tracking-wide">Peak Memory</p>
+                    <p class="text-2xl font-bold text-indigo-900 mt-2">
+                        @php
+                            $bytes = $performanceStats['max_memory_peak_end_bytes'];
+                            if ($bytes < 1024 * 1024) {
+                                echo round($bytes / 1024, 2) . ' KB';
+                            } elseif ($bytes < 1024 * 1024 * 1024) {
+                                echo round($bytes / (1024 * 1024), 2) . ' MB';
+                            } else {
+                                echo round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+                            }
+                        @endphp
+                    </p>
+                    <p class="text-xs text-indigo-600 mt-1">Maximum observed</p>
+                </div>
+                <div class="text-4xl opacity-80">📈</div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Average CPU Time -->
+    @if($performanceStats['avg_cpu_total_ms'] !== null)
+    <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 overflow-hidden shadow-lg rounded-xl border border-cyan-200 hover:shadow-xl transition-shadow">
+        <div class="p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-cyan-600 uppercase tracking-wide">Avg CPU Time</p>
+                    <p class="text-2xl font-bold text-cyan-900 mt-2">
+                        @php
+                            $ms = $performanceStats['avg_cpu_total_ms'];
+                            if ($ms < 1000) {
+                                echo round($ms) . 'ms';
+                            } else {
+                                echo round($ms / 1000, 2) . 's';
+                            }
+                        @endphp
+                    </p>
+                    <p class="text-xs text-cyan-600 mt-1">User + System</p>
+                </div>
+                <div class="text-4xl opacity-80">⚡</div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Memory Efficiency -->
+    @if($performanceStats['avg_memory_start_bytes'] !== null && $performanceStats['avg_memory_end_bytes'] !== null)
+    <div class="bg-gradient-to-br from-teal-50 to-teal-100 overflow-hidden shadow-lg rounded-xl border border-teal-200 hover:shadow-xl transition-shadow">
+        <div class="p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-teal-600 uppercase tracking-wide">Memory Delta</p>
+                    <p class="text-2xl font-bold text-teal-900 mt-2">
+                        @php
+                            $delta = $performanceStats['avg_memory_end_bytes'] - $performanceStats['avg_memory_start_bytes'];
+                            $absDelta = abs($delta);
+                            $sign = $delta >= 0 ? '+' : '-';
+                            if ($absDelta < 1024 * 1024) {
+                                echo $sign . round($absDelta / 1024, 2) . ' KB';
+                            } elseif ($absDelta < 1024 * 1024 * 1024) {
+                                echo $sign . round($absDelta / (1024 * 1024), 2) . ' MB';
+                            } else {
+                                echo $sign . round($absDelta / (1024 * 1024 * 1024), 2) . ' GB';
+                            }
+                        @endphp
+                    </p>
+                    <p class="text-xs text-teal-600 mt-1">Avg change per job</p>
+                </div>
+                <div class="text-4xl opacity-80">📊</div>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+@endif
+
 <!-- Queue Depths -->
 <div class="bg-white shadow rounded-lg mb-8 p-6">
     <h3 class="text-lg font-medium text-gray-900 mb-4">📊 Queue Depths (Real-time)</h3>
@@ -166,6 +282,81 @@
         </div>
     </div>
 </div>
+
+<!-- Performance Metrics Section -->
+@if($hasPerformanceData && ($topMemoryJobs->isNotEmpty() || $topCpuJobs->isNotEmpty()))
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Top Memory Consuming Jobs -->
+    @if($topMemoryJobs->isNotEmpty())
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">💾 Top Memory Consumers</h3>
+            <div class="space-y-3">
+                @foreach($topMemoryJobs as $job)
+                    <div class="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50">
+                        <div class="flex-1 min-w-0">
+                            <span class="text-sm font-medium text-gray-900 truncate block" title="{{ $job->job_class }}">
+                                {{ Str::limit(class_basename($job->job_class), 30) }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ number_format($job->count) }} jobs</span>
+                        </div>
+                        <div class="ml-4 text-right">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                @php
+                                    $bytes = $job->avg_memory_peak;
+                                    if ($bytes < 1024 * 1024) {
+                                        echo round($bytes / 1024, 2) . ' KB';
+                                    } elseif ($bytes < 1024 * 1024 * 1024) {
+                                        echo round($bytes / (1024 * 1024), 2) . ' MB';
+                                    } else {
+                                        echo round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+                                    }
+                                @endphp
+                            </span>
+                            <p class="text-xs text-gray-500 mt-1">avg peak</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Top CPU Consuming Jobs -->
+    @if($topCpuJobs->isNotEmpty())
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">⚡ Top CPU Consumers</h3>
+            <div class="space-y-3">
+                @foreach($topCpuJobs as $job)
+                    <div class="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50">
+                        <div class="flex-1 min-w-0">
+                            <span class="text-sm font-medium text-gray-900 truncate block" title="{{ $job->job_class }}">
+                                {{ Str::limit(class_basename($job->job_class), 30) }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ number_format($job->count) }} jobs</span>
+                        </div>
+                        <div class="ml-4 text-right">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                                @php
+                                    $ms = $job->avg_cpu_total;
+                                    if ($ms < 1000) {
+                                        echo round($ms) . 'ms';
+                                    } else {
+                                        echo round($ms / 1000, 2) . 's';
+                                    }
+                                @endphp
+                            </span>
+                            <p class="text-xs text-gray-500 mt-1">avg total</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+@endif
 
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
     <!-- Top Tags -->

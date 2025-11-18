@@ -157,6 +157,62 @@ class QueueMonitorController extends Controller
             ];
         }
 
+        // Performance statistics
+        $performanceStats = [
+            'avg_memory_start_bytes' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('memory_start_bytes')
+                ->avg('memory_start_bytes'),
+            'avg_memory_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('memory_end_bytes')
+                ->avg('memory_end_bytes'),
+            'avg_memory_peak_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('memory_peak_end_bytes')
+                ->avg('memory_peak_end_bytes'),
+            'max_memory_peak_end_bytes' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('memory_peak_end_bytes')
+                ->max('memory_peak_end_bytes'),
+            'avg_cpu_user_ms' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('cpu_user_ms')
+                ->avg('cpu_user_ms'),
+            'avg_cpu_sys_ms' => QueueJobRun::where('created_at', '>', $since)
+                ->whereNotNull('cpu_sys_ms')
+                ->avg('cpu_sys_ms'),
+        ];
+
+        // Calculate average total CPU (user + sys)
+        $avgCpuTotal = null;
+        if ($performanceStats['avg_cpu_user_ms'] !== null || $performanceStats['avg_cpu_sys_ms'] !== null) {
+            $avgCpuTotal = ($performanceStats['avg_cpu_user_ms'] ?? 0) + ($performanceStats['avg_cpu_sys_ms'] ?? 0);
+        }
+        $performanceStats['avg_cpu_total_ms'] = $avgCpuTotal;
+
+        // Top memory-consuming jobs
+        $topMemoryJobs = QueueJobRun::select('job_class', DB::raw('AVG(memory_peak_end_bytes) as avg_memory_peak'), DB::raw('MAX(memory_peak_end_bytes) as max_memory_peak'), DB::raw('count(*) as count'))
+            ->where('created_at', '>', $since)
+            ->whereNotNull('memory_peak_end_bytes')
+            ->groupBy('job_class')
+            ->orderByDesc('avg_memory_peak')
+            ->limit(5)
+            ->get();
+
+        // Top CPU-consuming jobs
+        $topCpuJobs = QueueJobRun::select(
+                'job_class',
+                DB::raw('AVG(cpu_user_ms) as avg_cpu_user'),
+                DB::raw('AVG(cpu_sys_ms) as avg_cpu_sys'),
+                DB::raw('AVG(COALESCE(cpu_user_ms, 0) + COALESCE(cpu_sys_ms, 0)) as avg_cpu_total'),
+                DB::raw('count(*) as count')
+            )
+            ->where('created_at', '>', $since)
+            ->where(function($query) {
+                $query->whereNotNull('cpu_user_ms')
+                      ->orWhereNotNull('cpu_sys_ms');
+            })
+            ->groupBy('job_class')
+            ->orderByDesc('avg_cpu_total')
+            ->limit(5)
+            ->get();
+
         return view('vantage::dashboard', compact(
             'stats',
             'recentJobs',
@@ -168,7 +224,10 @@ class QueueMonitorController extends Controller
             'topTags',
             'recentBatches',
             'queueDepths',
-            'period'
+            'period',
+            'performanceStats',
+            'topMemoryJobs',
+            'topCpuJobs'
         ));
     }
 

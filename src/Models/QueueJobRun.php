@@ -173,5 +173,155 @@ class QueueJobRun extends Model
 
         return round($this->duration_ms / 1000, 2) . 's';
     }
+
+    /**
+     * Format bytes to human-readable format (bytes, MB, GB)
+     */
+    protected function formatBytes(?int $bytes): string
+    {
+        if ($bytes === null) {
+            return 'N/A';
+        }
+
+        if ($bytes < 1024) {
+            return $bytes . ' B';
+        }
+
+        if ($bytes < 1024 * 1024) {
+            return round($bytes / 1024, 2) . ' KB';
+        }
+
+        if ($bytes < 1024 * 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 2) . ' MB';
+        }
+
+        return round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+    }
+
+    /**
+     * Format milliseconds to human-readable format (ms, seconds)
+     */
+    protected function formatMilliseconds(?int $ms): string
+    {
+        if ($ms === null) {
+            return 'N/A';
+        }
+
+        if ($ms < 1000) {
+            return $ms . 'ms';
+        }
+
+        return round($ms / 1000, 2) . 's';
+    }
+
+    /**
+     * Get formatted memory start
+     */
+    public function getFormattedMemoryStartAttribute(): string
+    {
+        return $this->formatBytes($this->memory_start_bytes);
+    }
+
+    /**
+     * Get formatted memory end
+     */
+    public function getFormattedMemoryEndAttribute(): string
+    {
+        return $this->formatBytes($this->memory_end_bytes);
+    }
+
+    /**
+     * Get formatted memory peak start
+     */
+    public function getFormattedMemoryPeakStartAttribute(): string
+    {
+        return $this->formatBytes($this->memory_peak_start_bytes);
+    }
+
+    /**
+     * Get formatted memory peak end
+     */
+    public function getFormattedMemoryPeakEndAttribute(): string
+    {
+        return $this->formatBytes($this->memory_peak_end_bytes);
+    }
+
+    /**
+     * Get formatted memory peak delta (with +/- sign)
+     */
+    public function getFormattedMemoryPeakDeltaAttribute(): string
+    {
+        if ($this->memory_peak_delta_bytes === null) {
+            return 'N/A';
+        }
+
+        $formatted = $this->formatBytes(abs($this->memory_peak_delta_bytes));
+        $sign = $this->memory_peak_delta_bytes >= 0 ? '+' : '-';
+        return $sign . $formatted;
+    }
+
+    /**
+     * Get formatted CPU user time
+     */
+    public function getFormattedCpuUserAttribute(): string
+    {
+        return $this->formatMilliseconds($this->cpu_user_ms);
+    }
+
+    /**
+     * Get formatted CPU system time
+     */
+    public function getFormattedCpuSysAttribute(): string
+    {
+        return $this->formatMilliseconds($this->cpu_sys_ms);
+    }
+
+    /**
+     * Get total CPU time (user + sys)
+     */
+    public function getCpuTotalMsAttribute(): ?int
+    {
+        if ($this->cpu_user_ms === null && $this->cpu_sys_ms === null) {
+            return null;
+        }
+
+        return ($this->cpu_user_ms ?? 0) + ($this->cpu_sys_ms ?? 0);
+    }
+
+    /**
+     * Get formatted total CPU time
+     */
+    public function getFormattedCpuTotalAttribute(): string
+    {
+        return $this->formatMilliseconds($this->cpu_total_ms);
+    }
+
+    /**
+     * Calculate memory delta (end - start)
+     */
+    public function getMemoryDeltaBytesAttribute(): ?int
+    {
+        if ($this->memory_start_bytes === null || $this->memory_end_bytes === null) {
+            return null;
+        }
+
+        return $this->memory_end_bytes - $this->memory_start_bytes;
+    }
+
+    /**
+     * Get formatted memory delta (with +/- sign)
+     */
+    public function getFormattedMemoryDeltaAttribute(): string
+    {
+        $delta = $this->memory_delta_bytes;
+        
+        if ($delta === null) {
+            return 'N/A';
+        }
+
+        $formatted = $this->formatBytes(abs($delta));
+        $sign = $delta >= 0 ? '+' : '-';
+        return $sign . $formatted;
+    }
 }
 

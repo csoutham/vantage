@@ -150,6 +150,8 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memory</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPU</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -198,6 +200,24 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ $job->formatted_duration }}
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" title="@if($job->memory_peak_end_bytes)Peak: {{ $job->formatted_memory_peak_end }}@endif">
+                        @if($job->memory_peak_end_bytes)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">
+                                {{ $job->formatted_memory_peak_end }}
+                            </span>
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" title="@if($job->cpu_total_ms)User: {{ $job->formatted_cpu_user }}, Sys: {{ $job->formatted_cpu_sys }}@endif">
+                        @if($job->cpu_total_ms)
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-50 text-cyan-700">
+                                {{ $job->formatted_cpu_total }}
+                            </span>
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ $job->created_at->diffForHumans() }}
                     </td>
@@ -209,7 +229,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="10" class="px-6 py-8 text-center text-gray-500">
                         No jobs found
                     </td>
                 </tr>

@@ -142,6 +142,116 @@
                 <pre class="text-xs bg-gray-50 p-4 rounded overflow-x-auto"><code>{{ json_encode($job->decoded_payload, JSON_PRETTY_PRINT) }}</code></pre>
             </div>
         @endif
+
+        <!-- Performance Metrics -->
+        @php
+            $hasPerformanceData = $job->memory_start_bytes !== null || $job->memory_end_bytes !== null || 
+                                  $job->memory_peak_start_bytes !== null || $job->memory_peak_end_bytes !== null ||
+                                  $job->cpu_user_ms !== null || $job->cpu_sys_ms !== null;
+        @endphp
+        @if($hasPerformanceData)
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">⚡ Performance Metrics</h3>
+                
+                <!-- Memory Metrics -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">💾 Memory Usage</h4>
+                    <dl class="grid grid-cols-2 gap-4">
+                        @if($job->memory_start_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Memory Start</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_memory_start }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->memory_end_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Memory End</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_memory_end }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->memory_peak_start_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Peak Memory Start</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_memory_peak_start }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->memory_peak_end_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Peak Memory End</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_memory_peak_end }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->memory_peak_delta_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Peak Memory Delta</dt>
+                            <dd class="mt-1 text-sm font-medium {{ $job->memory_peak_delta_bytes >= 0 ? 'text-red-600' : 'text-green-600' }}">
+                                {{ $job->formatted_memory_peak_delta }}
+                            </dd>
+                        </div>
+                        @endif
+
+                        @if($job->memory_delta_bytes !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">Memory Delta</dt>
+                            <dd class="mt-1 text-sm font-medium {{ $job->memory_delta_bytes >= 0 ? 'text-red-600' : 'text-green-600' }}">
+                                {{ $job->formatted_memory_delta }}
+                            </dd>
+                        </div>
+                        @endif
+                    </dl>
+
+                    <!-- Memory Usage Visual Indicator -->
+                    @if($job->memory_peak_end_bytes !== null && $job->memory_start_bytes !== null)
+                    <div class="mt-4">
+                        <div class="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Start: {{ $job->formatted_memory_start }}</span>
+                            <span>Peak: {{ $job->formatted_memory_peak_end }}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            @php
+                                $usagePercent = min(100, ($job->memory_peak_end_bytes / max($job->memory_start_bytes, 1)) * 100);
+                                $colorClass = $usagePercent > 150 ? 'bg-red-500' : ($usagePercent > 120 ? 'bg-yellow-500' : 'bg-green-500');
+                            @endphp
+                            <div class="{{ $colorClass }} h-2 rounded-full" style="width: {{ min(100, $usagePercent) }}%"></div>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- CPU Metrics -->
+                @if($job->cpu_user_ms !== null || $job->cpu_sys_ms !== null)
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">⚡ CPU Time</h4>
+                    <dl class="grid grid-cols-2 gap-4">
+                        @if($job->cpu_user_ms !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">User Time</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_cpu_user }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->cpu_sys_ms !== null)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500">System Time</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">{{ $job->formatted_cpu_sys }}</dd>
+                        </div>
+                        @endif
+
+                        @if($job->cpu_total_ms !== null)
+                        <div class="col-span-2">
+                            <dt class="text-xs font-medium text-gray-500">Total CPU Time</dt>
+                            <dd class="mt-1 text-sm font-bold text-indigo-600">{{ $job->formatted_cpu_total }}</dd>
+                        </div>
+                        @endif
+                    </dl>
+                </div>
+                @endif
+            </div>
+        @endif
     </div>
 
     <!-- Sidebar -->
