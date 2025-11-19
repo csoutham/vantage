@@ -292,16 +292,12 @@ VANTAGE_SLACK_WEBHOOK=https://hooks.slack.com/services/...
 
 # Routes (default: true)
 VANTAGE_ROUTES=true
-<<<<<<< HEAD
-# Change the base path for the dashboard (default: vantage)
+
+# Change the base URL path for the dashboard (default: vantage)
 VANTAGE_ROUTE_PREFIX=vantage
 
 # Logging (default: true)
 VANTAGE_LOGGING_ENABLED=true
-=======
-# Change the base URL path for the dashboard (default: vantage)
-VANTAGE_ROUTE_PREFIX=vantage
->>>>>>> origin/main
 ```
 
 ## Demo
