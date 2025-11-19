@@ -253,27 +253,69 @@ class QueueMonitorController extends Controller
         }
 
         // Advanced tag filtering
-        if ($request->filled('tags')) {
-            $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
+        $tagsParam = $request->get('tags');
+        
+        // Check if tags parameter exists and is not empty
+        if (!empty($tagsParam) && trim($tagsParam) !== '') {
+            $tags = is_array($tagsParam) ? $tagsParam : explode(',', $tagsParam);
             $tags = array_map('trim', $tags);
             $tags = array_map('strtolower', $tags);
+            $tags = array_filter($tags); // Remove empty tags
 
-            if ($request->filled('tag_mode') && $request->tag_mode === 'any') {
-                // Jobs that have ANY of the specified tags
-                $query->where(function($q) use ($tags) {
+            if (!empty($tags)) {
+                // Get database driver for database-specific JSON queries
+                $connectionName = (new VantageJob)->getConnectionName();
+                $connection = DB::connection($connectionName);
+                $driver = $connection->getDriverName();
+
+                if ($request->filled('tag_mode') && $request->tag_mode === 'any') {
+                    // Jobs that have ANY of the specified tags
+                    $query->where(function($q) use ($tags, $driver) {
+                        foreach ($tags as $tag) {
+                            if ($driver === 'sqlite') {
+                                // SQLite: Use JSON functions if available, otherwise fallback to LIKE
+                                // Try json_each first (SQLite 3.38+), fallback to LIKE pattern
+                                $q->orWhereRaw("EXISTS (
+                                    SELECT 1 FROM json_each(job_tags) 
+                                    WHERE json_each.value = ?
+                                )", [json_encode($tag)]);
+                            } else {
+                                // MySQL and PostgreSQL support whereJsonContains
+                                $q->orWhereJsonContains('job_tags', $tag);
+                            }
+                        }
+                    });
+                } else {
+                    // Jobs that have ALL of the specified tags (default)
                     foreach ($tags as $tag) {
-                        $q->orWhereJsonContains('job_tags', $tag);
+                        if ($driver === 'sqlite') {
+                            // SQLite: Use JSON functions if available
+                            $query->whereRaw("EXISTS (
+                                SELECT 1 FROM json_each(job_tags) 
+                                WHERE json_each.value = ?
+                            )", [json_encode($tag)]);
+                        } else {
+                            // MySQL and PostgreSQL
+                            $query->whereJsonContains('job_tags', $tag);
+                        }
                     }
-                });
-            } else {
-                // Jobs that have ALL of the specified tags (default)
-                foreach ($tags as $tag) {
-                    $query->whereJsonContains('job_tags', $tag);
                 }
             }
         } elseif ($request->filled('tag')) {
             // Single tag filter (backward compatibility)
-            $query->whereJsonContains('job_tags', strtolower($request->tag));
+            $tag = strtolower(trim($request->tag));
+            $connectionName = (new VantageJob)->getConnectionName();
+            $connection = DB::connection($connectionName);
+            $driver = $connection->getDriverName();
+
+            if ($driver === 'sqlite') {
+                $query->whereRaw("EXISTS (
+                    SELECT 1 FROM json_each(job_tags) 
+                    WHERE json_each.value = ?
+                )", [json_encode($tag)]);
+            } else {
+                $query->whereJsonContains('job_tags', $tag);
+            }
         }
 
         if ($request->filled('since')) {

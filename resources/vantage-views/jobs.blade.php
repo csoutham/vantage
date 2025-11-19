@@ -29,7 +29,7 @@
         <p class="mt-1 text-sm text-gray-500">Narrow down your job list</p>
     </div>
     <div class="p-6">
-        <form method="GET" action="{{ route('vantage.jobs') }}" class="space-y-6">
+        <form id="jobs-filter-form" method="GET" action="{{ route('vantage.jobs') }}" class="space-y-6">
             <!-- First row of filters -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -106,6 +106,64 @@
 
 <!-- Tag Cloud -->
 @if($allTags->isNotEmpty())
+<script>
+// Define function globally so it's accessible from onclick
+window.addTagToFilter = function(tag) {
+    if (!tag) {
+        console.error('No tag provided');
+        return false;
+    }
+    
+    console.log('addTagToFilter called with tag:', tag);
+    
+    // Find the tags input in the main filters form
+    const form = document.getElementById('jobs-filter-form');
+    if (!form) {
+        console.error('Form not found');
+        return false;
+    }
+    
+    const tagsInput = form.querySelector('input[name="tags"]');
+    if (!tagsInput) {
+        console.error('Tags input not found');
+        return false;
+    }
+    
+    const currentTags = tagsInput.value.trim();
+    
+    // Normalize tag (already lowercased from PHP, but ensure it's trimmed)
+    const normalizedTag = String(tag).toLowerCase().trim();
+    
+    let newTagsValue;
+    if (currentTags === '') {
+        newTagsValue = normalizedTag;
+    } else {
+        const tags = currentTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+        if (!tags.includes(normalizedTag)) {
+            // Add the tag if it doesn't exist
+            newTagsValue = currentTags + ', ' + normalizedTag;
+        } else {
+            // Tag already exists - remove it (toggle behavior)
+            const newTags = tags.filter(t => t !== normalizedTag);
+            newTagsValue = newTags.join(', ');
+        }
+    }
+    
+    // Set the value
+    tagsInput.value = newTagsValue;
+    
+    // Debug: log what we're submitting
+    console.log('Tag:', normalizedTag);
+    console.log('Current tags:', currentTags);
+    console.log('New tags value:', newTagsValue);
+    
+    // Submit the main form
+    console.log('Submitting form...');
+    form.submit();
+    
+    return false; // Prevent default
+};
+</script>
 <div class="bg-white shadow-sm border border-gray-200 rounded-lg mb-6">
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="text-lg font-medium text-gray-900">Popular Tags</h3>
@@ -114,8 +172,17 @@
     <div class="p-6">
         <div class="flex flex-wrap gap-2">
             @foreach($allTags as $tagData)
-                <button onclick="addTagToFilter('{{ $tagData['tag'] }}')" 
-                        class="group inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                @php
+                    $tagValue = strtolower($tagData['tag']);
+                    $currentTags = request('tags', '');
+                    $tagsArray = !empty($currentTags) ? array_map('trim', explode(',', $currentTags)) : [];
+                    $isActive = in_array($tagValue, array_map('strtolower', $tagsArray));
+                @endphp
+                <button type="button" 
+                        data-tag="{{ $tagValue }}"
+                        onclick="addTagToFilter('{{ addslashes($tagValue) }}')"
+                        class="tag-filter-button group inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                               {{ $isActive ? 'ring-2 ring-indigo-500 ' : '' }}
                                {{ $tagData['failed'] > 0 ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' : 
                                   ($tagData['processed'] > 0 ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' : 
                                   'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100') }}">
@@ -250,31 +317,21 @@
 
 @section('scripts')
 <script>
-function addTagToFilter(tag) {
-    const tagsInput = document.querySelector('input[name="tags"]');
-    const currentTags = tagsInput.value.trim();
-    
-    if (currentTags === '') {
-        tagsInput.value = tag;
-    } else {
-        const tags = currentTags.split(',').map(t => t.trim());
-        if (!tags.includes(tag)) {
-            tagsInput.value = currentTags + ', ' + tag;
-        }
-    }
-    
-    // Auto-submit the form
-    document.querySelector('form').submit();
-}
+// Function is defined inline before the Popular Tags section
+// This section is kept for any additional scripts
 
 // Add keyboard shortcuts
 document.addEventListener('keydown', function(e) {
     // Ctrl/Cmd + K to focus on tags input
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        document.querySelector('input[name="tags"]').focus();
+        const tagsInput = document.querySelector('input[name="tags"]');
+        if (tagsInput) {
+            tagsInput.focus();
+        }
     }
 });
 </script>
 @endsection
+
 
