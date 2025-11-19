@@ -164,6 +164,7 @@ php artisan vendor:publish --tag=vantage-config
 - `retention_days` - How long to keep job history
 - `routes` - Master switch to register dashboard routes
 - `route_prefix` - Base URI segment for all dashboard routes (default: `vantage`)
+- `logging.enabled` - Toggle Vantage's own log output
 - `notify.email` - Email to notify on failures
 - `notify.slack_webhook` - Slack webhook URL for failures
 - `telemetry.enabled` - Enable performance telemetry (memory/CPU)
@@ -291,15 +292,19 @@ VANTAGE_SLACK_WEBHOOK=https://hooks.slack.com/services/...
 
 # Routes (default: true)
 VANTAGE_ROUTES=true
+
 # Change the base URL path for the dashboard (default: vantage)
 VANTAGE_ROUTE_PREFIX=vantage
+
+# Logging (default: true)
+VANTAGE_LOGGING_ENABLED=true
 ```
 
 ## Demo
 
 Watch a brief demo of the Vantage dashboard in action:
 
-[![Vantage Demo](https://img.youtube.com/vi/IZAjYTtzL7I/0.jpg)](https://www.youtube.com/watch?v=IZAjYTtzL7I)
+[![Vantage Demo](https://img.youtube.com/vi/IZAjYTtzL7I/0.jpg)](https://www.youtube.com/watch?v=ZPea5E3o_2w)
 
 > Click the thumbnail above to watch the demo video on YouTube.
 

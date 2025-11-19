@@ -4,6 +4,7 @@ namespace HoudaSlassi\Vantage\Http\Controllers;
 
 use HoudaSlassi\Vantage\Models\VantageJob;
 use HoudaSlassi\Vantage\Support\QueueDepthChecker;
+use HoudaSlassi\Vantage\Support\VantageLogger;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -145,7 +146,7 @@ class QueueMonitorController extends Controller
         try {
             $queueDepths = QueueDepthChecker::getQueueDepthWithMetadataAlways();
         } catch (\Throwable $e) {
-            Log::warning('Failed to get queue depths', ['error' => $e->getMessage()]);
+            VantageLogger::warning('Failed to get queue depths', ['error' => $e->getMessage()]);
             // Always show at least one queue entry even on error
             $queueDepths = [
                 'default' => [
@@ -252,27 +253,69 @@ class QueueMonitorController extends Controller
         }
 
         // Advanced tag filtering
-        if ($request->filled('tags')) {
-            $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
+        $tagsParam = $request->get('tags');
+        
+        // Check if tags parameter exists and is not empty
+        if (!empty($tagsParam) && trim($tagsParam) !== '') {
+            $tags = is_array($tagsParam) ? $tagsParam : explode(',', $tagsParam);
             $tags = array_map('trim', $tags);
             $tags = array_map('strtolower', $tags);
+            $tags = array_filter($tags); // Remove empty tags
 
-            if ($request->filled('tag_mode') && $request->tag_mode === 'any') {
-                // Jobs that have ANY of the specified tags
-                $query->where(function($q) use ($tags) {
+            if (!empty($tags)) {
+                // Get database driver for database-specific JSON queries
+                $connectionName = (new VantageJob)->getConnectionName();
+                $connection = DB::connection($connectionName);
+                $driver = $connection->getDriverName();
+
+                if ($request->filled('tag_mode') && $request->tag_mode === 'any') {
+                    // Jobs that have ANY of the specified tags
+                    $query->where(function($q) use ($tags, $driver) {
+                        foreach ($tags as $tag) {
+                            if ($driver === 'sqlite') {
+                                // SQLite: Use JSON functions if available, otherwise fallback to LIKE
+                                // Try json_each first (SQLite 3.38+), fallback to LIKE pattern
+                                $q->orWhereRaw("EXISTS (
+                                    SELECT 1 FROM json_each(job_tags) 
+                                    WHERE json_each.value = ?
+                                )", [json_encode($tag)]);
+                            } else {
+                                // MySQL and PostgreSQL support whereJsonContains
+                                $q->orWhereJsonContains('job_tags', $tag);
+                            }
+                        }
+                    });
+                } else {
+                    // Jobs that have ALL of the specified tags (default)
                     foreach ($tags as $tag) {
-                        $q->orWhereJsonContains('job_tags', $tag);
+                        if ($driver === 'sqlite') {
+                            // SQLite: Use JSON functions if available
+                            $query->whereRaw("EXISTS (
+                                SELECT 1 FROM json_each(job_tags) 
+                                WHERE json_each.value = ?
+                            )", [json_encode($tag)]);
+                        } else {
+                            // MySQL and PostgreSQL
+                            $query->whereJsonContains('job_tags', $tag);
+                        }
                     }
-                });
-            } else {
-                // Jobs that have ALL of the specified tags (default)
-                foreach ($tags as $tag) {
-                    $query->whereJsonContains('job_tags', $tag);
                 }
             }
         } elseif ($request->filled('tag')) {
             // Single tag filter (backward compatibility)
-            $query->whereJsonContains('job_tags', strtolower($request->tag));
+            $tag = strtolower(trim($request->tag));
+            $connectionName = (new VantageJob)->getConnectionName();
+            $connection = DB::connection($connectionName);
+            $driver = $connection->getDriverName();
+
+            if ($driver === 'sqlite') {
+                $query->whereRaw("EXISTS (
+                    SELECT 1 FROM json_each(job_tags) 
+                    WHERE json_each.value = ?
+                )", [json_encode($tag)]);
+            } else {
+                $query->whereJsonContains('job_tags', $tag);
+            }
         }
 
         if ($request->filled('since')) {
@@ -285,7 +328,16 @@ class QueueMonitorController extends Controller
             ->withQueryString();
 
         // Get filter options
-        $queues = VantageJob::distinct()->pluck('queue')->filter();
+        // Only show queues that actually have jobs in vantage_jobs table
+        // This ensures filtering by a queue will return results
+        $queues = VantageJob::distinct()
+            ->whereNotNull('queue')
+            ->where('queue', '!=', '')
+            ->pluck('queue')
+            ->filter()
+            ->sort()
+            ->values();
+        
         $jobClasses = VantageJob::distinct()->pluck('job_class')->map(fn($c) => class_basename($c))->filter();
 
         // Get all available tags with counts
@@ -434,7 +486,7 @@ class QueueMonitorController extends Controller
             return back()->with('success', "✓ Job queued for retry!");
 
         } catch (\Throwable $e) {
-            \Log::error('Vantage: Retry failed', [
+                VantageLogger::error('Vantage: Retry failed', [
                 'job_id' => $id,
                 'error' => $e->getMessage()
             ]);
@@ -460,7 +512,7 @@ class QueueMonitorController extends Controller
             $serialized = $payload['raw_payload']['data']['command'] ?? null;
 
             if (!$serialized) {
-                \Log::warning('Vantage: No serialized command in payload', ['run_id' => $run->id]);
+                VantageLogger::warning('Vantage: No serialized command in payload', ['run_id' => $run->id]);
                 return null;
             }
 
@@ -468,14 +520,14 @@ class QueueMonitorController extends Controller
             $job = unserialize($serialized, ['allowed_classes' => true]);
 
             if (!is_object($job)) {
-                \Log::warning('Vantage: Unserialize did not return object', [
+                VantageLogger::warning('Vantage: Unserialize did not return object', [
                     'run_id' => $run->id,
                     'result_type' => gettype($job)
                 ]);
                 return null;
             }
 
-            \Log::info('Vantage: Successfully restored job', [
+            VantageLogger::info('Vantage: Successfully restored job', [
                 'run_id' => $run->id,
                 'job_class' => get_class($job)
             ]);
