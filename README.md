@@ -103,7 +103,7 @@ Filter jobs by status, queue, job class, tags, and date range:
 - **Retry Chain**: View original job and all retry attempts
 - **Quick Actions**: Retry failed jobs directly from the details page
 
-**Note:** The dashboard requires authentication by default. Make sure you're logged in or customize the `viewVantage` gate as described in the Configuration section.
+**Note:** The dashboard requires authentication by default. Make sure you're logged in, or customize the `viewVantage` gate / `VANTAGE_AUTH_ENABLED` setting (explained below) if you need different behavior.
 
 ### Retry Failed Jobs
 
@@ -201,9 +201,14 @@ This ensures the `vantage_jobs` table is created and accessed from the correct d
 
 ### Authentication
 
-Vantage uses Laravel's Gate system for authorization (similar to Horizon). **Users must be authenticated via Laravel's authentication system** to access the dashboard. By default, all authenticated users can access Vantage.
+Vantage protects the dashboard with Laravel's Gate system (similar to Horizon) via the `viewVantage` gate.
 
-**Important:** Make sure your application has authentication set up (e.g., Laravel Breeze, Laravel Jetstream, or custom auth). The dashboard requires users to be logged in.
+- **Default behaviour:** Any authenticated user can access the dashboard.
+- **Gate input:** The gate receives the authenticated user instance or `null` if no one is logged in.
+- **Customization:** Override the gate in your `AppServiceProvider` to implement your own rules.
+- **Disable entirely:** Set `VANTAGE_AUTH_ENABLED=false` to bypass the gate (not recommended for production).
+
+Make sure your application has authentication set up (Laravel Breeze, Jetstream or your own implementation) unless you intentionally open the dashboard to everyone.
 
 To customize access (e.g., only allow admins), override the `viewVantage` gate in your `AppServiceProvider`:
 
@@ -212,21 +217,17 @@ use Illuminate\Support\Facades\Gate;
 
 public function boot(): void
 {
-    Gate::define('viewVantage', function ($user) {
+    Gate::define('viewVantage', function ($user = null) {
         // Only allow admins
-        return $user->isAdmin();
+        return optional($user)->isAdmin();
         
         // Or any other custom logic
-        // return $user->hasRole('developer');
+        // return $user && $user->hasRole('developer');
     });
 }
 ```
 
-To disable authentication entirely (not recommended for production):
-
-```env
-VANTAGE_AUTH_ENABLED=false
-```
+Want to keep the dashboard public but still record jobs? Either return `true` from the gate even for guests, or set `VANTAGE_AUTH_ENABLED=false`.
 
 ## Testing
 
