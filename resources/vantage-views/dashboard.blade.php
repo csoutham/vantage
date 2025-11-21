@@ -729,12 +729,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     try {
-        // For single data point, ensure chart displays properly
-        const chartType = labels.length === 1 ? 'bar' : 'line';
+        // Ensure single data points are visible with larger point radius
         const pointRadius = labels.length === 1 ? 8 : 3;
         
         const chart = new Chart(ctx, {
-        type: chartType,
+        type: 'line',
         data: {
             labels: labels,
             datasets: [
@@ -743,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: successRates,
                     borderColor: 'rgb(34, 197, 94)',
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    tension: labels.length === 1 ? 0 : 0.4,
+                    tension: 0.4,
                     fill: true,
                     yAxisID: 'y',
                     pointRadius: pointRadius,
@@ -754,7 +753,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: totals,
                     borderColor: 'rgb(99, 102, 241)',
                     backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    tension: labels.length === 1 ? 0 : 0.4,
+                    tension: 0.4,
                     fill: true,
                     yAxisID: 'y1',
                     pointRadius: pointRadius,
@@ -765,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: failures,
                     borderColor: 'rgb(239, 68, 68)',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: labels.length === 1 ? 0 : 0.4,
+                    tension: 0.4,
                     fill: true,
                     yAxisID: 'y1',
                     pointRadius: pointRadius,
