@@ -7,13 +7,28 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
+     * Get the database connection for the migration.
+     */
+    public function getConnection(): ?string
+    {
+        return config('vantage.database_connection');
+    }
+
+    /**
      * Run the migrations.
      *
      * Performance optimization: Add indexes for common queries
      */
     public function up(): void
     {
-        Schema::table('vantage_jobs', function (Blueprint $table) {
+        $connection = $this->getConnection();
+        $schema = Schema::connection($connection);
+
+        if (!$schema->hasTable('vantage_jobs')) {
+            return;
+        }
+
+        $schema->table('vantage_jobs', function (Blueprint $table) {
             // Index for filtering by created_at (most common filter)
             $table->index('created_at', 'idx_vantage_jobs_created_at');
             
@@ -42,7 +57,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('vantage_jobs', function (Blueprint $table) {
+        $connection = $this->getConnection();
+        $schema = Schema::connection($connection);
+
+        if (!$schema->hasTable('vantage_jobs')) {
+            return;
+        }
+
+        $schema->table('vantage_jobs', function (Blueprint $table) {
             $table->dropIndex('idx_vantage_jobs_created_at');
             $table->dropIndex('idx_vantage_jobs_status');
             $table->dropIndex('idx_vantage_jobs_created_status');
